@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- [PLACEHOLDER] Change the tab title to match your agent's purpose -->
+  <title>ReAct Agent</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap"
+    rel="stylesheet"
+  />
+  <style>
+    /* -----------------------------------------------------------------------
+       Design tokens
+       [PLACEHOLDER] Swap accent colour (#7c6ee8) to match your brand.
+    ----------------------------------------------------------------------- */
+    :root {
+      --bg:         #0d0d12;
+      --surface:    #16161f;
+      --surface-2:  #1e1e2a;
+      --border:     #2a2a3a;
+      --accent:     #7c6ee8;
+      --accent-dim: #4e3fb0;
+      --text:       #e8e8f0;
+      --text-muted: #8888a0;
+      --green:      #4ade80;
+      --amber:      #fbbf24;
+      --red:        #f87171;
+      --radius:     10px;
+      --mono:       "DM Mono", monospace;
+      --sans:       "DM Sans", system-ui, sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 15px;
+      line-height: 1.6;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem 4rem;
+    }
+
+    /* Header */
+    header {
+      width: 100%;
+      max-width: 780px;
+      margin-bottom: 2.5rem;
+    }
+
+    header h1 {
+      font-size: 1.6rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+
+    /* [PLACEHOLDER] Change the gradient colours to match your brand */
+    header h1 span {
+      background: linear-gradient(90deg, var(--accent), #a78bfa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    header p {
+      color: var(--text-muted);
+      margin-top: 0.3rem;
+      font-size: 0.9rem;
+    }
+
+    /* Main layout */
+    main {
+      width: 100%;
+      max-width: 780px;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    /* Query form */
+    .query-form {
+      display: flex;
+      gap: 0.75rem;
+    }
+
+    .query-form input {
+      flex: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 0.95rem;
+      padding: 0.75rem 1rem;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    .query-form input:focus { border-color: var(--accent); }
+    .query-form input::placeholder { color: var(--text-muted); }
+
+    .query-form button {
+      background: var(--accent);
+      border: none;
+      border-radius: var(--radius);
+      color: #fff;
+      cursor: pointer;
+      font-family: var(--sans);
+      font-size: 0.9rem;
+      font-weight: 600;
+      padding: 0.75rem 1.4rem;
+      transition: background 0.15s, opacity 0.15s;
+      white-space: nowrap;
+    }
+
+    .query-form button:hover:not(:disabled) { background: var(--accent-dim); }
+    .query-form button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* Status bar */
+    #status {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      min-height: 1.2em;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--accent);
+      animation: pulse 1s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.4; transform: scale(0.7); }
+    }
+
+    /* Panel shared styles */
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .panel-header .badge {
+      margin-left: auto;
+      background: var(--surface-2);
+      border-radius: 999px;
+      font-size: 0.72rem;
+      padding: 0.15rem 0.55rem;
+      color: var(--text-muted);
+    }
+
+    .panel-body { padding: 1rem; }
+
+    /* Answer panel */
+    #answer-text {
+      white-space: pre-wrap;
+      font-size: 0.95rem;
+      line-height: 1.7;
+    }
+
+    #answer-text.placeholder { color: var(--text-muted); font-style: italic; }
+
+    /* Error box */
+    .error-box {
+      background: rgba(248,113,113,0.08);
+      border: 1px solid rgba(248,113,113,0.3);
+      border-radius: var(--radius);
+      color: var(--red);
+      font-size: 0.88rem;
+      padding: 0.75rem 1rem;
+      display: none;
+    }
+
+    /* Reasoning trace */
+    #steps-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    /* Step card */
+    .step-card {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .step-card-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .step-card-header.thought { color: var(--amber); }
+    .step-card-header.action  { color: var(--accent); }
+    .step-card-header.obs     { color: var(--green); }
+
+    .step-card-body {
+      padding: 0.65rem 0.75rem;
+      font-family: var(--mono);
+      font-size: 0.82rem;
+      line-height: 1.55;
+      white-space: pre-wrap;
+      word-break: break-word;
+      color: var(--text);
+    }
+
+    /* Tavily observation cards */
+    .obs-results { display: flex; flex-direction: column; gap: 0.5rem; }
+
+    .obs-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.6rem 0.75rem;
+    }
+
+    .obs-item a {
+      color: var(--accent);
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      text-decoration: none;
+      word-break: break-all;
+    }
+
+    .obs-item a:hover { text-decoration: underline; }
+
+    .obs-item-title {
+      font-weight: 600;
+      font-size: 0.85rem;
+      margin-bottom: 0.2rem;
+      font-family: var(--sans);
+    }
+
+    .obs-item-snippet {
+      color: var(--text-muted);
+      font-family: var(--sans);
+      font-size: 0.82rem;
+      line-height: 1.5;
+    }
+
+    /* Empty state */
+    .empty-trace {
+      color: var(--text-muted);
+      font-style: italic;
+      font-size: 0.88rem;
+      padding: 0.25rem 0;
+    }
+
+    /* Skeleton shimmer (loading placeholder) */
+    .skeleton {
+      background: linear-gradient(90deg, var(--surface-2) 25%, var(--border) 50%, var(--surface-2) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.4s infinite;
+      border-radius: 4px;
+      height: 1em;
+    }
+
+    @keyframes shimmer {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <!-- [PLACEHOLDER] Change the heading and subtitle to describe your agent -->
+    <h1><span>ReAct Agent</span> Template</h1>
+    <p>Ask a research question — the agent will search the web and reason step by step.</p>
+  </header>
+
+  <main>
+
+    <!-- Query input -->
+    <form class="query-form" id="query-form" onsubmit="handleSubmit(event)">
+      <!-- [PLACEHOLDER] Update placeholder text to match your domain -->
+      <input
+        id="query-input"
+        type="text"
+        placeholder="e.g. What are the latest breakthroughs in fusion energy?"
+        autocomplete="off"
+        required
+      />
+      <button type="submit" id="submit-btn">Research</button>
+    </form>
+
+    <!-- Status / loading indicator -->
+    <div id="status"></div>
+
+    <!-- Error box -->
+    <div class="error-box" id="error-box"></div>
+
+    <!-- Answer panel -->
+    <div class="panel" id="answer-panel">
+      <div class="panel-header">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        Answer
+      </div>
+      <div class="panel-body">
+        <div id="answer-text" class="placeholder">Your answer will appear here.</div>
+      </div>
+    </div>
+
+    <!-- Reasoning trace panel -->
+    <div class="panel" id="trace-panel">
+      <div class="panel-header">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Reasoning Trace
+        <span class="badge" id="step-count">0 steps</span>
+      </div>
+      <div class="panel-body">
+        <div id="steps-list">
+          <div class="empty-trace">The agent's Thought → Action → Observation chain will appear here.</div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    // [PLACEHOLDER] Point this at your deployed backend URL in production.
+    // e.g. "https://your-service.onrender.com"
+    const API_BASE = "http://localhost:8000";
+
+    // -----------------------------------------------------------------------
+    // Helpers
+    // -----------------------------------------------------------------------
+
+    function setStatus(msg, loading = false) {
+      const el = document.getElementById("status");
+      el.innerHTML = loading
+        ? `<div class="dot"></div>${msg}`
+        : msg;
+    }
+
+    function showError(msg) {
+      const box = document.getElementById("error-box");
+      box.textContent = msg;
+      box.style.display = "block";
+    }
+
+    function clearError() {
+      const box = document.getElementById("error-box");
+      box.style.display = "none";
+    }
+
+    function setAnswer(text) {
+      const el = document.getElementById("answer-text");
+      el.textContent = text;
+      el.classList.remove("placeholder");
+    }
+
+    function resetAnswer() {
+      const el = document.getElementById("answer-text");
+      el.textContent = "Your answer will appear here.";
+      el.classList.add("placeholder");
+    }
+
+    // -----------------------------------------------------------------------
+    // Render reasoning trace
+    // Each step has: thought, action, action_input, observation
+    // Observation may be a Tavily result array or a plain string.
+    // -----------------------------------------------------------------------
+
+    function renderSteps(steps) {
+      const list = document.getElementById("steps-list");
+      const counter = document.getElementById("step-count");
+      list.innerHTML = "";
+      counter.textContent = `${steps.length} step${steps.length !== 1 ? "s" : ""}`;
+
+      if (steps.length === 0) {
+        list.innerHTML = '<div class="empty-trace">No intermediate steps recorded.</div>';
+        return;
+      }
+
+      steps.forEach((step, i) => {
+        // Thought card
+        if (step.thought) {
+          list.appendChild(makeTextCard(
+            "thought",
+            `💭 Thought ${i + 1}`,
+            step.thought
+          ));
+        }
+
+        // Action card
+        const actionLabel = step.action
+          ? `⚡ Action — ${step.action}`
+          : "⚡ Action";
+        const actionBody = step.action_input
+          ? (typeof step.action_input === "object"
+              ? JSON.stringify(step.action_input, null, 2)
+              : step.action_input)
+          : "";
+        list.appendChild(makeTextCard("action", actionLabel, actionBody));
+
+        // Observation card — parse Tavily JSON when possible
+        list.appendChild(makeObsCard(i, step.observation));
+      });
+    }
+
+    function makeTextCard(type, label, body) {
+      const card = document.createElement("div");
+      card.className = "step-card";
+      card.innerHTML = `
+        <div class="step-card-header ${type}">${label}</div>
+        <div class="step-card-body">${escHtml(body)}</div>
+      `;
+      return card;
+    }
+
+    function makeObsCard(i, observation) {
+      const card = document.createElement("div");
+      card.className = "step-card";
+
+      // Try to render structured Tavily results
+      let results = null;
+      if (Array.isArray(observation)) {
+        results = observation;
+      } else if (typeof observation === "string") {
+        try {
+          const parsed = JSON.parse(observation);
+          if (Array.isArray(parsed)) results = parsed;
+        } catch (_) { /* plain string */ }
+      }
+
+      let bodyHtml;
+      if (results && results.length > 0 && results[0].url) {
+        // Tavily result array: [{title, url, content}, ...]
+        const itemsHtml = results.map(r => `
+          <div class="obs-item">
+            <div class="obs-item-title">${escHtml(r.title || "Result")}</div>
+            <a href="${escAttr(r.url)}" target="_blank" rel="noopener">${escHtml(r.url)}</a>
+            <div class="obs-item-snippet">${escHtml((r.content || "").slice(0, 240))}…</div>
+          </div>
+        `).join("");
+        bodyHtml = `<div class="obs-results">${itemsHtml}</div>`;
+      } else {
+        // Plain string observation
+        const text = typeof observation === "object"
+          ? JSON.stringify(observation, null, 2)
+          : String(observation);
+        bodyHtml = `<div class="step-card-body">${escHtml(text)}</div>`;
+      }
+
+      card.innerHTML = `
+        <div class="step-card-header obs">👁 Observation ${i + 1}</div>
+        ${bodyHtml}
+      `;
+      return card;
+    }
+
+    function escHtml(str) {
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function escAttr(str) {
+      return String(str).replace(/"/g, "&quot;");
+    }
+
+    // -----------------------------------------------------------------------
+    // Skeleton loading state
+    // -----------------------------------------------------------------------
+
+    function showSkeleton() {
+      const list = document.getElementById("steps-list");
+      list.innerHTML = Array.from({ length: 3 }, () =>
+        `<div class="step-card">
+          <div class="step-card-header thought"><div class="skeleton" style="width:120px"></div></div>
+          <div class="step-card-body"><div class="skeleton" style="width:90%;margin-bottom:6px"></div><div class="skeleton" style="width:60%"></div></div>
+        </div>`
+      ).join("");
+    }
+
+    // -----------------------------------------------------------------------
+    // Form submit handler
+    // -----------------------------------------------------------------------
+
+    async function handleSubmit(e) {
+      e.preventDefault();
+
+      const query   = document.getElementById("query-input").value.trim();
+      const btn     = document.getElementById("submit-btn");
+      if (!query) return;
+
+      // Reset UI
+      clearError();
+      resetAnswer();
+      showSkeleton();
+      setStatus("Thinking…", true);
+      btn.disabled = true;
+
+      // [PLACEHOLDER] Use a real session ID (e.g. user UUID) for multi-turn support.
+      const sessionId = crypto.randomUUID();
+
+      try {
+        const res = await fetch(`${API_BASE}/api/research`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query, session_id: sessionId }),
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ detail: res.statusText }));
+          throw new Error(err.detail || `HTTP ${res.status}`);
+        }
+
+        const data = await res.json();
+        setAnswer(data.result);
+        renderSteps(data.steps);
+        setStatus(`Done — ${data.steps.length} reasoning step${data.steps.length !== 1 ? "s" : ""}.`);
+      } catch (err) {
+        showError(`Error: ${err.message}`);
+        setStatus("");
+        document.getElementById("steps-list").innerHTML =
+          '<div class="empty-trace">No steps to display.</div>';
+        document.getElementById("step-count").textContent = "0 steps";
+      } finally {
+        btn.disabled = false;
+      }
+    }
+  </script>
+</body>
+</html>
